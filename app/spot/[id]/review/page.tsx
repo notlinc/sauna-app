@@ -29,11 +29,11 @@ function calculateOverall(scores: {
 
   return Number(
     (
-      scores.sauna * 0.35 +
-      scores.coldPlunge * 0.35 +
-      scores.vibe * 0.15 +
-      scores.facilities * 0.1 +
-      scores.value * 0.05
+      scores.sauna * 0.3 +
+      scores.coldPlunge * 0.3 +
+      scores.vibe * 0.3 +
+      scores.facilities * 0.07 +
+      scores.value * 0.03
     ).toFixed(1),
   );
 }
@@ -52,7 +52,7 @@ function ScoreSelector({
       <p className="mb-3 text-base text-zinc-300">{label}</p>
 
       <div className="grid grid-cols-5 gap-3">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
+        {[1,2,3,4,5,6,7,8,9,10].map((n) => {
           const isSelected = value === n;
           const isExtreme = n < 4 || n > 8;
 
@@ -61,7 +61,7 @@ function ScoreSelector({
               key={n}
               type="button"
               onClick={() => setValue(n)}
-              className={`h-12 rounded-2xl text-base font-semibold transition ${
+              className={`h-12 rounded-2xl text-base font-semibold ${
                 isSelected
                   ? "bg-white text-black"
                   : isExtreme
@@ -232,16 +232,10 @@ export default function ReviewPage() {
     router.refresh();
   };
 
-  const inputClass = "mb-4 w-full rounded-2xl bg-zinc-900 p-3";
-  const textareaClass = "mb-4 w-full rounded-2xl bg-zinc-900 p-3";
-
   return (
     <main className="min-h-screen bg-black p-6 text-white">
       <div className="mx-auto max-w-md">
-        <Link
-          href={`/spot/${spotId}`}
-          className="mb-4 block text-sm text-zinc-400 underline"
-        >
+        <Link href={`/spot/${spotId}`} className="mb-4 block text-sm text-zinc-400 underline">
           Back
         </Link>
 
@@ -251,7 +245,7 @@ export default function ReviewPage() {
           placeholder="Your name"
           value={reviewerName}
           onChange={(e) => setReviewerName(e.target.value)}
-          className={inputClass}
+          className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
         />
 
         <label className="mb-6 flex gap-2 text-sm text-zinc-300">
@@ -268,75 +262,13 @@ export default function ReviewPage() {
           <p className="text-3xl font-bold">
             {overall === null ? "—" : overall.toFixed(1)}
           </p>
-          <p className="mt-2 text-xs text-zinc-500">
-            Sauna and cold plunge are weighted highest.
-          </p>
         </div>
 
         <ScoreSelector label="Sauna" value={sauna} setValue={setSauna} />
-        {needsComment(sauna) && (
-          <textarea
-            placeholder="Why did you score Sauna this low/high?"
-            value={saunaComment}
-            onChange={(e) => setSaunaComment(e.target.value)}
-            className={textareaClass}
-          />
-        )}
-
-        <ScoreSelector
-          label="Cold plunge"
-          value={coldPlunge}
-          setValue={setColdPlunge}
-        />
-        {needsComment(coldPlunge) && (
-          <textarea
-            placeholder="Why did you score Cold plunge this low/high?"
-            value={coldPlungeComment}
-            onChange={(e) => setColdPlungeComment(e.target.value)}
-            className={textareaClass}
-          />
-        )}
-
-        <ScoreSelector
-          label="Facilities"
-          value={facilities}
-          setValue={setFacilities}
-        />
-        {needsComment(facilities) && (
-          <textarea
-            placeholder="Why did you score Facilities this low/high?"
-            value={facilitiesComment}
-            onChange={(e) => setFacilitiesComment(e.target.value)}
-            className={textareaClass}
-          />
-        )}
-
+        <ScoreSelector label="Cold plunge" value={coldPlunge} setValue={setColdPlunge} />
         <ScoreSelector label="Vibe" value={vibe} setValue={setVibe} />
-        {needsComment(vibe) && (
-          <textarea
-            placeholder="Why did you score Vibe this low/high?"
-            value={vibeComment}
-            onChange={(e) => setVibeComment(e.target.value)}
-            className={textareaClass}
-          />
-        )}
-
+        <ScoreSelector label="Facilities" value={facilities} setValue={setFacilities} />
         <ScoreSelector label="Value" value={value} setValue={setValue} />
-        {needsComment(value) && (
-          <textarea
-            placeholder="Why did you score Value this low/high?"
-            value={valueComment}
-            onChange={(e) => setValueComment(e.target.value)}
-            className={textareaClass}
-          />
-        )}
-
-        <textarea
-          placeholder="General comment"
-          value={generalComment}
-          onChange={(e) => setGeneralComment(e.target.value)}
-          className={textareaClass}
-        />
 
         {error && (
           <div className="mb-4 rounded-2xl bg-red-950 p-3 text-sm text-red-200">
@@ -345,10 +277,9 @@ export default function ReviewPage() {
         )}
 
         <button
-          type="button"
           onClick={handleSave}
           disabled={saving}
-          className="w-full rounded-2xl bg-white py-3 font-semibold text-black disabled:opacity-50"
+          className="w-full rounded-2xl bg-white py-3 font-semibold text-black"
         >
           {saving ? "Saving..." : "Submit Review"}
         </button>
