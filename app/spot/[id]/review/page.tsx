@@ -52,7 +52,7 @@ function ScoreSelector({
       <p className="mb-3 text-base text-zinc-300">{label}</p>
 
       <div className="grid grid-cols-5 gap-3">
-        {[1,2,3,4,5,6,7,8,9,10].map((n) => {
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
           const isSelected = value === n;
           const isExtreme = n < 4 || n > 8;
 
@@ -235,7 +235,10 @@ export default function ReviewPage() {
   return (
     <main className="min-h-screen bg-black p-6 text-white">
       <div className="mx-auto max-w-md">
-        <Link href={`/spot/${spotId}`} className="mb-4 block text-sm text-zinc-400 underline">
+        <Link
+          href={`/spot/${spotId}`}
+          className="mb-4 block text-sm text-zinc-400 underline"
+        >
           Back
         </Link>
 
@@ -265,10 +268,73 @@ export default function ReviewPage() {
         </div>
 
         <ScoreSelector label="Sauna" value={sauna} setValue={setSauna} />
-        <ScoreSelector label="Cold plunge" value={coldPlunge} setValue={setColdPlunge} />
-        <ScoreSelector label="Vibe" value={vibe} setValue={setVibe} />
-        <ScoreSelector label="Facilities" value={facilities} setValue={setFacilities} />
+        {needsComment(sauna) && (
+          <textarea
+            placeholder="Why did you score Sauna this low/high?"
+            value={saunaComment}
+            onChange={(e) => setSaunaComment(e.target.value)}
+            className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+          />
+        )}
+
+        <ScoreSelector
+          label="Cold plunge"
+          value={coldPlunge}
+          setValue={setColdPlunge}
+        />
+        {needsComment(coldPlunge) && (
+          <textarea
+            placeholder="Why did you score Cold plunge this low/high?"
+            value={coldPlungeComment}
+            onChange={(e) => setColdPlungeComment(e.target.value)}
+            className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+          />
+        )}
+
+        <ScoreSelector
+          label="Vibe"
+          value={vibe}
+          setValue={setVibe}
+        />
+        {needsComment(vibe) && (
+          <textarea
+            placeholder="Why did you score Vibe this low/high?"
+            value={vibeComment}
+            onChange={(e) => setVibeComment(e.target.value)}
+            className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+          />
+        )}
+
+        <ScoreSelector
+          label="Facilities"
+          value={facilities}
+          setValue={setFacilities}
+        />
+        {needsComment(facilities) && (
+          <textarea
+            placeholder="Why did you score Facilities this low/high?"
+            value={facilitiesComment}
+            onChange={(e) => setFacilitiesComment(e.target.value)}
+            className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+          />
+        )}
+
         <ScoreSelector label="Value" value={value} setValue={setValue} />
+        {needsComment(value) && (
+          <textarea
+            placeholder="Why did you score Value this low/high?"
+            value={valueComment}
+            onChange={(e) => setValueComment(e.target.value)}
+            className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+          />
+        )}
+
+        <textarea
+          placeholder="General comment"
+          value={generalComment}
+          onChange={(e) => setGeneralComment(e.target.value)}
+          className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+        />
 
         {error && (
           <div className="mb-4 rounded-2xl bg-red-950 p-3 text-sm text-red-200">
