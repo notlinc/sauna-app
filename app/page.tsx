@@ -1,65 +1,181 @@
-import Image from "next/image";
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "../src/lib/supabase";
+
+type Review = {
+  id: number;
+  overall: number;
+  created_at: string;
+};
+
+type Spot = {
+  id: string;
+  name: string;
+  address: string;
+  created_at: string;
+  updated_at: string;
+  reviews: Review[];
+};
+
+type SortOption = "highest-rated" | "most-reviewed" | "newest";
 
 export default function Home() {
+  const [spots, setSpots] = useState<Spot[]>([]);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("highest-rated");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadSpots = async () => {
+      const { data, error } = await supabase
+        .from("spots")
+        .select(`
+          id,
+          name,
+          address,
+          created_at,
+          updated_at,
+          reviews (
+            id,
+            overall,
+            created_at
+          )
+        `);
+
+      if (error) {
+        console.error(error);
+        setLoading(false);
+        return;
+      }
+
+      setSpots((data as Spot[]) || []);
+      setLoading(false);
+    };
+
+    loadSpots();
+  }, []);
+
+  const getAverage = (reviews: Review[] = []) => {
+    if (!reviews.length) return null;
+    const avg =
+      reviews.reduce((sum, r) => sum + Number(r.overall), 0) /
+      reviews.length;
+    return Number(avg.toFixed(1));
+  };
+
+  const filteredAndSorted = useMemo(() => {
+    let result = [...spots];
+    const query = search.toLowerCase();
+
+    if (query) {
+      result = result.filter(
+        (s) =>
+          s.name.toLowerCase().includes(query) ||
+          s.address.toLowerCase().includes(query),
+      );
+    }
+
+    result.sort((a, b) => {
+      if (sortBy === "highest-rated") {
+        const aAvg = getAverage(a.reviews) ?? -1;
+        const bAvg = getAverage(b.reviews) ?? -1;
+        return bAvg - aAvg;
+      }
+
+      if (sortBy === "most-reviewed") {
+        return b.reviews.length - a.reviews.length;
+      }
+
+      return (
+        new Date(b.updated_at).getTime() -
+        new Date(a.updated_at).getTime()
+      );
+    });
+
+    return result;
+  }, [spots, search, sortBy]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main className="min-h-screen bg-black px-6 py-8 text-white">
+      <div className="mx-auto max-w-md">
+        <h1 className="mb-6 text-4xl font-bold">Sauna Ratings</h1>
+
+        <div className="mb-4 flex gap-3">
+          <input
+            type="text"
+            placeholder="Search name or address"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 rounded-2xl bg-zinc-900 p-3 text-white placeholder:text-zinc-500"
+          />
+
+          <select
+            value={sortBy}
+            onChange={(e) =>
+              setSortBy(e.target.value as SortOption)
+            }
+            className="w-40 rounded-2xl bg-zinc-900 p-3 text-sm text-zinc-300"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <option value="highest-rated">Top rated</option>
+            <option value="most-reviewed">Most reviews</option>
+            <option value="newest">Recent</option>
+          </select>
         </div>
-      </main>
-    </div>
+
+        {loading ? (
+          <div className="rounded-2xl bg-zinc-900 p-4 text-zinc-400">
+            Loading...
+          </div>
+        ) : (
+          <>
+            <div className="mb-4 text-sm text-zinc-500">
+              {filteredAndSorted.length} spot
+              {filteredAndSorted.length === 1 ? "" : "s"}
+            </div>
+
+            <div className="space-y-4">
+              {filteredAndSorted.map((spot) => {
+                const avg = getAverage(spot.reviews);
+
+                return (
+                  <Link
+                    key={spot.id}
+                    href={`/spot/${spot.id}`}
+                  >
+                    <div className="rounded-2xl bg-zinc-900 p-5">
+                      <div className="mb-3 flex items-center justify-between">
+                        <h2 className="text-2xl font-semibold">
+                          {spot.name}
+                        </h2>
+                        <div className="rounded-full bg-zinc-800 px-3 py-1 text-sm font-semibold">
+                          {avg === null ? "—" : avg}
+                        </div>
+                      </div>
+
+                      <p className="text-zinc-400">
+                        {spot.address}
+                      </p>
+
+                      <div className="mt-3 text-sm text-zinc-500">
+                        {spot.reviews.length} review
+                        {spot.reviews.length === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        <Link href="/add" className="mt-8 block">
+          <div className="w-full rounded-2xl bg-white py-4 text-center text-2xl font-semibold text-black">
+            + Add New Spot
+          </div>
+        </Link>
+      </div>
+    </main>
   );
 }
