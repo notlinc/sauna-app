@@ -10,6 +10,7 @@ export default function AddSpot() {
 
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
+  const [website, setWebsite] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -28,6 +29,7 @@ export default function AddSpot() {
       id: crypto.randomUUID(),
       name: name.trim(),
       address: address.trim(),
+      website: website.trim(),
       created_at: now,
       updated_at: now,
     });
@@ -57,7 +59,7 @@ export default function AddSpot() {
           placeholder="Spot name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mb-4 w-full rounded-2xl bg-zinc-900 p-3 text-white placeholder:text-zinc-500"
+          className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
         />
 
         <input
@@ -65,7 +67,15 @@ export default function AddSpot() {
           placeholder="Full address"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          className="mb-4 w-full rounded-2xl bg-zinc-900 p-3 text-white placeholder:text-zinc-500"
+          className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+        />
+
+        <input
+          type="text"
+          placeholder="Website (optional)"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
         />
 
         {error && (
@@ -77,7 +87,7 @@ export default function AddSpot() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full rounded-2xl bg-white py-4 text-center text-xl font-semibold text-black disabled:opacity-50"
+          className="w-full rounded-2xl bg-white py-4 text-xl font-semibold text-black"
         >
           {saving ? "Saving..." : "Save Spot"}
         </button>

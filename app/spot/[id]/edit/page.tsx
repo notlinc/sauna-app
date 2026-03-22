@@ -12,6 +12,7 @@ export default function EditPage() {
 
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
+  const [website, setWebsite] = useState("");
   const [verified, setVerified] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -19,20 +20,18 @@ export default function EditPage() {
 
   useEffect(() => {
     const loadSpot = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("spots")
-        .select("id, name, address")
+        .select("name, address, website")
         .eq("id", spotId)
         .single();
 
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-        return;
+      if (data) {
+        setName(data.name);
+        setAddress(data.address);
+        setWebsite(data.website || "");
       }
 
-      setName(data.name);
-      setAddress(data.address);
       setLoading(false);
     };
 
@@ -41,12 +40,7 @@ export default function EditPage() {
 
   const handleSave = async () => {
     if (!verified) {
-      setError("You must confirm you are a verified reviewer.");
-      return;
-    }
-
-    if (!name.trim() || !address.trim()) {
-      setError("Name and address are required.");
+      setError("Confirm you are a verified reviewer");
       return;
     }
 
@@ -56,8 +50,9 @@ export default function EditPage() {
     const { error } = await supabase
       .from("spots")
       .update({
-        name: name.trim(),
-        address: address.trim(),
+        name,
+        address,
+        website,
         updated_at: new Date().toISOString(),
       })
       .eq("id", spotId);
@@ -73,21 +68,12 @@ export default function EditPage() {
     router.refresh();
   };
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-black p-6 text-white">
-        <div className="mx-auto max-w-md">Loading...</div>
-      </main>
-    );
-  }
+  if (loading) return null;
 
   return (
     <main className="min-h-screen bg-black p-6 text-white">
       <div className="mx-auto max-w-md">
-        <Link
-          href={`/spot/${spotId}`}
-          className="mb-4 block text-sm text-zinc-400 underline"
-        >
+        <Link href={`/spot/${spotId}`} className="mb-4 block text-sm text-zinc-400 underline">
           Back
         </Link>
 
@@ -96,38 +82,40 @@ export default function EditPage() {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Spot name"
           className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
         />
 
         <input
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          placeholder="Address"
           className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
         />
 
-        <label className="mb-4 flex gap-2 text-sm text-zinc-300">
+        <input
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          placeholder="Website"
+          className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+        />
+
+        <label className="mb-4 flex gap-2 text-sm">
           <input
             type="checkbox"
             checked={verified}
             onChange={(e) => setVerified(e.target.checked)}
           />
-          I am a verified reviewer
+          Verified reviewer
         </label>
 
         {error && (
-          <div className="mb-4 rounded-2xl bg-red-950 p-3 text-sm text-red-200">
-            {error}
-          </div>
+          <div className="mb-4 text-red-400">{error}</div>
         )}
 
         <button
           onClick={handleSave}
-          disabled={saving}
-          className="w-full rounded-2xl bg-white py-3 font-semibold text-black disabled:opacity-50"
+          className="w-full rounded-2xl bg-white py-3 text-black"
         >
-          {saving ? "Saving..." : "Save Changes"}
+          Save
         </button>
       </div>
     </main>
