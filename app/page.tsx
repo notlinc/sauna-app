@@ -186,11 +186,7 @@ export default function Home() {
   };
 
   const getDistance = (spot: Spot) => {
-    if (
-      !userLocation ||
-      spot.lat === null ||
-      spot.lng === null
-    ) {
+    if (!userLocation || spot.lat === null || spot.lng === null) {
       return null;
     }
 
@@ -289,66 +285,48 @@ export default function Home() {
           </select>
         </div>
 
-        {sortBy === "near" && !userLocation && !locationDenied && (
-          <div className="mb-4 rounded-2xl bg-zinc-900 p-4 text-sm text-zinc-400">
-            Getting your location...
-          </div>
-        )}
-
-        {sortBy === "near" && locationDenied && (
-          <div className="mb-4 rounded-2xl bg-zinc-900 p-4 text-sm text-zinc-400">
-            Location access was denied, so Near me can’t be used yet.
-          </div>
-        )}
-
-        <div className="mb-4 text-sm text-zinc-500">
-          {filteredAndSortedSpots.length} spot
-          {filteredAndSortedSpots.length === 1 ? "" : "s"}
-        </div>
-
         <div className="space-y-4">
-          {filteredAndSortedSpots.length === 0 ? (
-            <div className="rounded-2xl bg-zinc-900 p-4 text-zinc-400">
-              No matching spots found.
-            </div>
-          ) : (
-            filteredAndSortedSpots.map((spot) => {
-              const displayScore = getRankingScore(spot.reviews);
-              const distance = getDistance(spot);
+          {filteredAndSortedSpots.map((spot) => {
+            const displayScore = getRankingScore(spot.reviews);
+            const distance = getDistance(spot);
 
-              return (
-                <Link key={spot.id} href={`/spot/${spot.id}`} className="block">
-                  <div className="rounded-2xl bg-zinc-900 p-5">
-                    <div className="mb-3 flex items-center justify-between gap-4">
-                      <h2 className="text-2xl font-semibold leading-tight">
-                        {spot.name}
-                      </h2>
-                      <div className="shrink-0 rounded-full bg-zinc-800 px-3 py-1 text-sm font-semibold">
-                        {spot.reviews.length === 0 ? "—" : displayScore.toFixed(1)}
-                      </div>
-                    </div>
-
-                    <p className="text-base text-zinc-400">{spot.address}</p>
-
-                    <div className="mt-3 flex items-center justify-between text-sm text-zinc-500">
-                      <span>
-                        {spot.reviews.length} review
-                        {spot.reviews.length === 1 ? "" : "s"}
-                      </span>
-                      <span>
-                        {distance !== null
-                          ? `${distance.toFixed(1)} km away`
-                          : `Updated ${new Date(spot.updated_at).toLocaleDateString("en-AU", {
-                              day: "numeric",
-                              month: "short",
-                            })}`}
-                      </span>
+            return (
+              <Link key={spot.id} href={`/spot/${spot.id}`} className="block">
+                <div className="rounded-2xl bg-zinc-900 p-5">
+                  <div className="mb-3 flex items-center justify-between gap-4">
+                    <h2 className="text-2xl font-semibold leading-tight">
+                      {spot.name}
+                    </h2>
+                    <div className="shrink-0 rounded-full bg-zinc-800 px-3 py-1 text-sm font-semibold">
+                      {spot.reviews.length === 0 ? "—" : displayScore.toFixed(1)}
                     </div>
                   </div>
-                </Link>
-              );
-            })
-          )}
+
+                  <p className="text-base text-zinc-400">{spot.address}</p>
+
+                  <div className="mt-3 flex items-center justify-between text-sm text-zinc-500">
+                    <span>
+                      {spot.reviews.length} review
+                      {spot.reviews.length === 1 ? "" : "s"}
+                    </span>
+
+                    <span className="flex gap-2">
+                      {distance !== null && (
+                        <span>{distance.toFixed(1)} km</span>
+                      )}
+                      <span>
+                        Updated{" "}
+                        {new Date(spot.updated_at).toLocaleDateString("en-AU", {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
 
         <Link href="/add" className="mt-8 block">
