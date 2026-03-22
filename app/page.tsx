@@ -21,17 +21,49 @@ type Spot = {
   id: string;
   name: string;
   address: string;
+  lat: number | null;
+  lng: number | null;
   created_at: string;
   updated_at: string;
   reviews: Rating[];
 };
 
-type SortOption = "highest-rated" | "most-reviewed" | "newest";
+type SortOption = "highest-rated" | "most-reviewed" | "newest" | "near";
+
+type UserLocation = {
+  lat: number;
+  lng: number;
+};
+
+function getDistanceInKm(
+  userLat: number,
+  userLng: number,
+  spotLat: number,
+  spotLng: number,
+) {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+
+  const R = 6371;
+  const dLat = toRad(spotLat - userLat);
+  const dLng = toRad(spotLng - userLng);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(userLat)) *
+      Math.cos(toRad(spotLat)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 export default function Home() {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("highest-rated");
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [locationDenied, setLocationDenied] = useState(false);
 
   useEffect(() => {
     const loadSpots = async () => {
@@ -41,6 +73,8 @@ export default function Home() {
           id,
           name,
           address,
+          lat,
+          lng,
           created_at,
           updated_at,
           reviews (
@@ -66,6 +100,29 @@ export default function Home() {
     };
 
     loadSpots();
+  }, []);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationDenied(true);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      () => {
+        setLocationDenied(true);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+      },
+    );
   }, []);
 
   const getRawAverage = (reviews: Rating[] = []) => {
@@ -128,6 +185,23 @@ export default function Home() {
     return Number((((v / (v + m)) * R + (m / (v + m)) * C)).toFixed(1));
   };
 
+  const getDistance = (spot: Spot) => {
+    if (
+      !userLocation ||
+      spot.lat === null ||
+      spot.lng === null
+    ) {
+      return null;
+    }
+
+    return getDistanceInKm(
+      userLocation.lat,
+      userLocation.lng,
+      spot.lat,
+      spot.lng,
+    );
+  };
+
   const filteredAndSortedSpots = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -169,6 +243,17 @@ export default function Home() {
         return bScore - aScore;
       }
 
+      if (sortBy === "near") {
+        const aDistance = getDistance(a);
+        const bDistance = getDistance(b);
+
+        if (aDistance === null && bDistance === null) return 0;
+        if (aDistance === null) return 1;
+        if (bDistance === null) return -1;
+
+        return aDistance - bDistance;
+      }
+
       return (
         new Date(b.updated_at).getTime() -
         new Date(a.updated_at).getTime()
@@ -176,7 +261,7 @@ export default function Home() {
     });
 
     return result;
-  }, [spots, search, sortBy, globalAverage]);
+  }, [spots, search, sortBy, globalAverage, userLocation]);
 
   return (
     <main className="min-h-screen bg-black px-6 py-8 text-white">
@@ -200,8 +285,21 @@ export default function Home() {
             <option value="highest-rated">Top rated</option>
             <option value="most-reviewed">Most reviews</option>
             <option value="newest">Recent</option>
+            <option value="near">Near me</option>
           </select>
         </div>
+
+        {sortBy === "near" && !userLocation && !locationDenied && (
+          <div className="mb-4 rounded-2xl bg-zinc-900 p-4 text-sm text-zinc-400">
+            Getting your location...
+          </div>
+        )}
+
+        {sortBy === "near" && locationDenied && (
+          <div className="mb-4 rounded-2xl bg-zinc-900 p-4 text-sm text-zinc-400">
+            Location access was denied, so Near me can’t be used yet.
+          </div>
+        )}
 
         <div className="mb-4 text-sm text-zinc-500">
           {filteredAndSortedSpots.length} spot
@@ -216,6 +314,7 @@ export default function Home() {
           ) : (
             filteredAndSortedSpots.map((spot) => {
               const displayScore = getRankingScore(spot.reviews);
+              const distance = getDistance(spot);
 
               return (
                 <Link key={spot.id} href={`/spot/${spot.id}`} className="block">
@@ -237,11 +336,12 @@ export default function Home() {
                         {spot.reviews.length === 1 ? "" : "s"}
                       </span>
                       <span>
-                        Updated{" "}
-                        {new Date(spot.updated_at).toLocaleDateString("en-AU", {
-                          day: "numeric",
-                          month: "short",
-                        })}
+                        {distance !== null
+                          ? `${distance.toFixed(1)} km away`
+                          : `Updated ${new Date(spot.updated_at).toLocaleDateString("en-AU", {
+                              day: "numeric",
+                              month: "short",
+                            })}`}
                       </span>
                     </div>
                   </div>
