@@ -7,14 +7,13 @@ import { supabase } from "../src/lib/supabase";
 type Review = {
   id: number;
   overall: number;
-  created_at: string;
+  verified_reviewer: boolean;
 };
 
 type Spot = {
   id: string;
   name: string;
   address: string;
-  created_at: string;
   updated_at: string;
   reviews: Review[];
 };
@@ -25,156 +24,143 @@ export default function Home() {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("highest-rated");
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadSpots = async () => {
-      const { data, error } = await supabase
+    const load = async () => {
+      const { data } = await supabase
         .from("spots")
         .select(`
           id,
           name,
           address,
-          created_at,
           updated_at,
           reviews (
             id,
             overall,
-            created_at
+            verified_reviewer
           )
         `);
 
-      if (error) {
-        console.error(error);
-        setLoading(false);
-        return;
-      }
-
-      setSpots((data as Spot[]) || []);
-      setLoading(false);
+      setSpots(data || []);
     };
 
-    loadSpots();
+    load();
   }, []);
 
-  const getAverage = (reviews: Review[] = []) => {
-    if (!reviews.length) return null;
-    const avg =
-      reviews.reduce((sum, r) => sum + Number(r.overall), 0) /
-      reviews.length;
-    return Number(avg.toFixed(1));
+  // 🔥 GLOBAL AVERAGE
+  const globalAverage = useMemo(() => {
+    const all = spots.flatMap((s) => s.reviews);
+    if (!all.length) return 0;
+
+    const weighted = all.reduce((sum, r) => {
+      const weight = r.verified_reviewer ? 2 : 1;
+      return sum + r.overall * weight;
+    }, 0);
+
+    const totalWeight = all.reduce(
+      (sum, r) => sum + (r.verified_reviewer ? 2 : 1),
+      0,
+    );
+
+    return weighted / totalWeight;
+  }, [spots]);
+
+  // 🔥 PER SPOT SCORE
+  const getScore = (reviews: Review[]) => {
+    if (!reviews.length) return 0;
+
+    const weightedSum = reviews.reduce((sum, r) => {
+      const weight = r.verified_reviewer ? 2 : 1;
+      return sum + r.overall * weight;
+    }, 0);
+
+    const totalWeight = reviews.reduce(
+      (sum, r) => sum + (r.verified_reviewer ? 2 : 1),
+      0,
+    );
+
+    const R = weightedSum / totalWeight;
+    const v = totalWeight;
+    const m = 2;
+    const C = globalAverage;
+
+    return (v / (v + m)) * R + (m / (v + m)) * C;
   };
 
-  const filteredAndSorted = useMemo(() => {
-    let result = [...spots];
-    const query = search.toLowerCase();
+  const filtered = useMemo(() => {
+    let list = [...spots];
 
-    if (query) {
-      result = result.filter(
+    if (search) {
+      list = list.filter(
         (s) =>
-          s.name.toLowerCase().includes(query) ||
-          s.address.toLowerCase().includes(query),
+          s.name.toLowerCase().includes(search.toLowerCase()) ||
+          s.address.toLowerCase().includes(search.toLowerCase()),
       );
     }
 
-    result.sort((a, b) => {
-      if (sortBy === "highest-rated") {
-        const aAvg = getAverage(a.reviews) ?? -1;
-        const bAvg = getAverage(b.reviews) ?? -1;
-        return bAvg - aAvg;
-      }
+    if (sortBy === "highest-rated") {
+      list.sort((a, b) => getScore(b.reviews) - getScore(a.reviews));
+    }
 
-      if (sortBy === "most-reviewed") {
-        return b.reviews.length - a.reviews.length;
-      }
+    if (sortBy === "most-reviewed") {
+      list.sort((a, b) => b.reviews.length - a.reviews.length);
+    }
 
-      return (
-        new Date(b.updated_at).getTime() -
-        new Date(a.updated_at).getTime()
+    if (sortBy === "newest") {
+      list.sort(
+        (a, b) =>
+          new Date(b.updated_at).getTime() -
+          new Date(a.updated_at).getTime(),
       );
-    });
+    }
 
-    return result;
-  }, [spots, search, sortBy]);
+    return list;
+  }, [spots, search, sortBy, globalAverage]);
 
   return (
-    <main className="min-h-screen bg-black px-6 py-8 text-white">
+    <main className="min-h-screen bg-black p-6 text-white">
       <div className="mx-auto max-w-md">
-        <h1 className="mb-6 text-4xl font-bold">Sauna Ratings</h1>
+        <h1 className="mb-6 text-3xl font-bold">Sauna Ratings</h1>
 
-        <div className="mb-4 flex gap-3">
-          <input
-            type="text"
-            placeholder="Search name or address"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 rounded-2xl bg-zinc-900 p-3 text-white placeholder:text-zinc-500"
-          />
+        <input
+          placeholder="Search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="mb-4 w-full rounded-xl bg-zinc-900 p-3"
+        />
 
-          <select
-            value={sortBy}
-            onChange={(e) =>
-              setSortBy(e.target.value as SortOption)
-            }
-            className="w-40 rounded-2xl bg-zinc-900 p-3 text-sm text-zinc-300"
-          >
-            <option value="highest-rated">Top rated</option>
-            <option value="most-reviewed">Most reviews</option>
-            <option value="newest">Recent</option>
-          </select>
+        <div className="mb-4 flex gap-2">
+          <button onClick={() => setSortBy("highest-rated")}>
+            Top
+          </button>
+          <button onClick={() => setSortBy("most-reviewed")}>
+            Reviews
+          </button>
+          <button onClick={() => setSortBy("newest")}>
+            New
+          </button>
         </div>
 
-        {loading ? (
-          <div className="rounded-2xl bg-zinc-900 p-4 text-zinc-400">
-            Loading...
-          </div>
-        ) : (
-          <>
-            <div className="mb-4 text-sm text-zinc-500">
-              {filteredAndSorted.length} spot
-              {filteredAndSorted.length === 1 ? "" : "s"}
-            </div>
+        <div className="space-y-4">
+          {filtered.map((spot) => {
+            const score = getScore(spot.reviews);
 
-            <div className="space-y-4">
-              {filteredAndSorted.map((spot) => {
-                const avg = getAverage(spot.reviews);
+            return (
+              <Link key={spot.id} href={`/spot/${spot.id}`}>
+                <div className="rounded-xl bg-zinc-900 p-4">
+                  <div className="flex justify-between">
+                    <h2>{spot.name}</h2>
+                    <div>{score.toFixed(1)}</div>
+                  </div>
 
-                return (
-                  <Link
-                    key={spot.id}
-                    href={`/spot/${spot.id}`}
-                  >
-                    <div className="rounded-2xl bg-zinc-900 p-5">
-                      <div className="mb-3 flex items-center justify-between">
-                        <h2 className="text-2xl font-semibold">
-                          {spot.name}
-                        </h2>
-                        <div className="rounded-full bg-zinc-800 px-3 py-1 text-sm font-semibold">
-                          {avg === null ? "—" : avg}
-                        </div>
-                      </div>
-
-                      <p className="text-zinc-400">
-                        {spot.address}
-                      </p>
-
-                      <div className="mt-3 text-sm text-zinc-500">
-                        {spot.reviews.length} review
-                        {spot.reviews.length === 1 ? "" : "s"}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </>
-        )}
-
-        <Link href="/add" className="mt-8 block">
-          <div className="w-full rounded-2xl bg-white py-4 text-center text-2xl font-semibold text-black">
-            + Add New Spot
-          </div>
-        </Link>
+                  <p className="text-sm text-zinc-400">
+                    {spot.reviews.length} reviews
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </main>
   );
