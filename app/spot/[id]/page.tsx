@@ -23,6 +23,7 @@ type Spot = {
   id: string;
   name: string;
   address: string;
+  website: string | null;
   created_at: string;
   updated_at: string;
   reviews: Review[];
@@ -51,6 +52,7 @@ export default function SpotPage() {
           id,
           name,
           address,
+          website,
           created_at,
           updated_at,
           reviews (
@@ -153,6 +155,18 @@ export default function SpotPage() {
         <div className="mt-4 rounded-2xl bg-zinc-900 p-5">
           <h1 className="text-3xl font-bold">{spot.name}</h1>
           <p className="mt-2 text-zinc-400">{spot.address}</p>
+
+          {spot.website && (
+            <a
+              href={spot.website}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 block text-sm text-blue-400 underline"
+            >
+              Visit Website
+            </a>
+          )}
+
           <p className="mt-3 text-sm text-zinc-500">
             Updated {formatDate(spot.updated_at)}
           </p>
