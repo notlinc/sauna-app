@@ -5,6 +5,26 @@ import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../../src/lib/supabase";
 
+function parseScore(value: string): number | null {
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) return null;
+  if (parsed < 0 || parsed > 10) return null;
+
+  return parsed;
+}
+
+function isWholeNumber(value: string) {
+  const trimmed = value.trim();
+  if (trimmed === "") return false;
+  if (!/^\d+(\.0+)?$/.test(trimmed)) return false;
+
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed);
+}
+
 function needsComment(value: number | null) {
   if (value === null) return false;
   return value < 4 || value > 8;
@@ -38,46 +58,6 @@ function calculateOverall(scores: {
   );
 }
 
-function ScoreSelector({
-  label,
-  value,
-  setValue,
-}: {
-  label: string;
-  value: number | null;
-  setValue: (v: number) => void;
-}) {
-  return (
-    <div className="mb-6">
-      <p className="mb-3 text-base text-zinc-300">{label}</p>
-
-      <div className="grid grid-cols-5 gap-3">
-        {[1,2,3,4,5,6,7,8,9,10].map((n) => {
-          const isSelected = value === n;
-          const isExtreme = n < 4 || n > 8;
-
-          return (
-            <button
-              key={n}
-              type="button"
-              onClick={() => setValue(n)}
-              className={`h-12 rounded-2xl text-base font-semibold ${
-                isSelected
-                  ? "bg-white text-black"
-                  : isExtreme
-                    ? "bg-zinc-800 text-zinc-200"
-                    : "bg-zinc-900 text-zinc-300"
-              }`}
-            >
-              {n}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 export default function ReviewPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -86,11 +66,11 @@ export default function ReviewPage() {
   const [reviewerName, setReviewerName] = useState("");
   const [verifiedReviewer, setVerifiedReviewer] = useState(false);
 
-  const [sauna, setSauna] = useState<number | null>(null);
-  const [coldPlunge, setColdPlunge] = useState<number | null>(null);
-  const [facilities, setFacilities] = useState<number | null>(null);
-  const [vibe, setVibe] = useState<number | null>(null);
-  const [value, setValue] = useState<number | null>(null);
+  const [sauna, setSauna] = useState("");
+  const [coldPlunge, setColdPlunge] = useState("");
+  const [facilities, setFacilities] = useState("");
+  const [vibe, setVibe] = useState("");
+  const [value, setValue] = useState("");
 
   const [saunaComment, setSaunaComment] = useState("");
   const [coldPlungeComment, setColdPlungeComment] = useState("");
@@ -102,45 +82,51 @@ export default function ReviewPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const saunaScore = parseScore(sauna);
+  const coldPlungeScore = parseScore(coldPlunge);
+  const facilitiesScore = parseScore(facilities);
+  const vibeScore = parseScore(vibe);
+  const valueScore = parseScore(value);
+
   const overall = useMemo(
     () =>
       calculateOverall({
-        sauna,
-        coldPlunge,
-        facilities,
-        vibe,
-        value,
+        sauna: saunaScore,
+        coldPlunge: coldPlungeScore,
+        facilities: facilitiesScore,
+        vibe: vibeScore,
+        value: valueScore,
       }),
-    [sauna, coldPlunge, facilities, vibe, value],
+    [saunaScore, coldPlungeScore, facilitiesScore, vibeScore, valueScore],
   );
 
   const compiledComment = useMemo(() => {
     const lines: string[] = [];
 
     if (generalComment.trim()) lines.push(generalComment.trim());
-    if (needsComment(sauna) && saunaComment.trim()) {
+    if (needsComment(saunaScore) && saunaComment.trim()) {
       lines.push(`Sauna: ${saunaComment.trim()}`);
     }
-    if (needsComment(coldPlunge) && coldPlungeComment.trim()) {
+    if (needsComment(coldPlungeScore) && coldPlungeComment.trim()) {
       lines.push(`Cold plunge: ${coldPlungeComment.trim()}`);
     }
-    if (needsComment(facilities) && facilitiesComment.trim()) {
+    if (needsComment(facilitiesScore) && facilitiesComment.trim()) {
       lines.push(`Facilities: ${facilitiesComment.trim()}`);
     }
-    if (needsComment(vibe) && vibeComment.trim()) {
+    if (needsComment(vibeScore) && vibeComment.trim()) {
       lines.push(`Vibe: ${vibeComment.trim()}`);
     }
-    if (needsComment(value) && valueComment.trim()) {
+    if (needsComment(valueScore) && valueComment.trim()) {
       lines.push(`Value: ${valueComment.trim()}`);
     }
 
     return lines.join("\n\n");
   }, [
-    sauna,
-    coldPlunge,
-    facilities,
-    vibe,
-    value,
+    saunaScore,
+    coldPlungeScore,
+    facilitiesScore,
+    vibeScore,
+    valueScore,
     saunaComment,
     coldPlungeComment,
     facilitiesComment,
@@ -156,33 +142,33 @@ export default function ReviewPage() {
     }
 
     if (
-      sauna === null ||
-      coldPlunge === null ||
-      facilities === null ||
-      vibe === null ||
-      value === null
+      saunaScore === null ||
+      coldPlungeScore === null ||
+      facilitiesScore === null ||
+      vibeScore === null ||
+      valueScore === null
     ) {
-      setError("All scores must be selected");
+      setError("All scores must be valid numbers between 0.0 and 10.0");
       return false;
     }
 
-    if (needsComment(sauna) && !saunaComment.trim()) {
+    if (needsComment(saunaScore) && !saunaComment.trim()) {
       setError("Sauna needs a comment");
       return false;
     }
-    if (needsComment(coldPlunge) && !coldPlungeComment.trim()) {
+    if (needsComment(coldPlungeScore) && !coldPlungeComment.trim()) {
       setError("Cold plunge needs a comment");
       return false;
     }
-    if (needsComment(facilities) && !facilitiesComment.trim()) {
+    if (needsComment(facilitiesScore) && !facilitiesComment.trim()) {
       setError("Facilities needs a comment");
       return false;
     }
-    if (needsComment(vibe) && !vibeComment.trim()) {
+    if (needsComment(vibeScore) && !vibeComment.trim()) {
       setError("Vibe needs a comment");
       return false;
     }
-    if (needsComment(value) && !valueComment.trim()) {
+    if (needsComment(valueScore) && !valueComment.trim()) {
       setError("Value needs a comment");
       return false;
     }
@@ -190,6 +176,24 @@ export default function ReviewPage() {
     if (overall === null) {
       setError("Overall could not be calculated");
       return false;
+    }
+
+    const perfectOrZeroSections: string[] = [];
+
+    if (saunaScore === 0 || saunaScore === 10) perfectOrZeroSections.push("Sauna");
+    if (coldPlungeScore === 0 || coldPlungeScore === 10) perfectOrZeroSections.push("Cold plunge");
+    if (facilitiesScore === 0 || facilitiesScore === 10) perfectOrZeroSections.push("Facilities");
+    if (vibeScore === 0 || vibeScore === 10) perfectOrZeroSections.push("Vibe");
+    if (valueScore === 0 || valueScore === 10) perfectOrZeroSections.push("Value");
+
+    if (perfectOrZeroSections.length > 0) {
+      const confirmed = window.confirm(
+        `You’ve given ${perfectOrZeroSections.join(", ")} a 0 or 10.\n\nAre you sure the experience was truly so bad that nothing could be worse, or so good that nothing could possibly be better?`,
+      );
+
+      if (!confirmed) {
+        return false;
+      }
     }
 
     setError("");
@@ -208,11 +212,11 @@ export default function ReviewPage() {
       verified_reviewer: verifiedReviewer,
       created_at: new Date().toISOString(),
       overall,
-      sauna,
-      cold_plunge: coldPlunge,
-      facilities,
-      vibe,
-      value,
+      sauna: saunaScore,
+      cold_plunge: coldPlungeScore,
+      facilities: facilitiesScore,
+      vibe: vibeScore,
+      value: valueScore,
       comment: compiledComment.trim(),
     });
 
@@ -232,10 +236,18 @@ export default function ReviewPage() {
     router.refresh();
   };
 
+  const inputClass =
+    "mb-2 w-full rounded-2xl bg-zinc-900 p-3 text-white placeholder:text-zinc-500";
+  const textareaClass =
+    "mb-4 w-full rounded-2xl bg-zinc-900 p-3 text-white placeholder:text-zinc-500";
+
   return (
     <main className="min-h-screen bg-black p-6 text-white">
       <div className="mx-auto max-w-md">
-        <Link href={`/spot/${spotId}`} className="mb-4 block text-sm text-zinc-400 underline">
+        <Link
+          href={`/spot/${spotId}`}
+          className="mb-4 block text-sm text-zinc-400 underline"
+        >
           Back
         </Link>
 
@@ -245,7 +257,7 @@ export default function ReviewPage() {
           placeholder="Your name"
           value={reviewerName}
           onChange={(e) => setReviewerName(e.target.value)}
-          className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+          className={inputClass}
         />
 
         <label className="mb-6 flex gap-2 text-sm text-zinc-300">
@@ -264,53 +276,108 @@ export default function ReviewPage() {
           </p>
         </div>
 
-        <ScoreSelector label="Sauna" value={sauna} setValue={setSauna} />
-        {needsComment(sauna) && (
+        <p className="mb-3 text-base text-zinc-300">Sauna</p>
+        <input
+          type="text"
+          inputMode="decimal"
+          placeholder="Enter score"
+          value={sauna}
+          onChange={(e) => setSauna(e.target.value)}
+          className={inputClass}
+        />
+        {isWholeNumber(sauna) && sauna.trim() !== "" && (
+          <p className="mb-3 text-sm text-zinc-500">rookie score</p>
+        )}
+        {needsComment(saunaScore) && (
           <textarea
             placeholder="Why did you score Sauna this low/high?"
             value={saunaComment}
             onChange={(e) => setSaunaComment(e.target.value)}
-            className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+            className={textareaClass}
           />
         )}
 
-        <ScoreSelector label="Cold plunge" value={coldPlunge} setValue={setColdPlunge} />
-        {needsComment(coldPlunge) && (
+        <p className="mb-3 text-base text-zinc-300">Cold plunge</p>
+        <input
+          type="text"
+          inputMode="decimal"
+          placeholder="Enter score"
+          value={coldPlunge}
+          onChange={(e) => setColdPlunge(e.target.value)}
+          className={inputClass}
+        />
+        {isWholeNumber(coldPlunge) && coldPlunge.trim() !== "" && (
+          <p className="mb-3 text-sm text-zinc-500">rookie score</p>
+        )}
+        {needsComment(coldPlungeScore) && (
           <textarea
             placeholder="Why did you score Cold plunge this low/high?"
             value={coldPlungeComment}
             onChange={(e) => setColdPlungeComment(e.target.value)}
-            className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+            className={textareaClass}
           />
         )}
 
-        <ScoreSelector label="Vibe" value={vibe} setValue={setVibe} />
-        {needsComment(vibe) && (
+        <p className="mb-3 text-base text-zinc-300">Vibe</p>
+        <input
+          type="text"
+          inputMode="decimal"
+          placeholder="Enter score"
+          value={vibe}
+          onChange={(e) => setVibe(e.target.value)}
+          className={inputClass}
+        />
+        {isWholeNumber(vibe) && vibe.trim() !== "" && (
+          <p className="mb-3 text-sm text-zinc-500">rookie score</p>
+        )}
+        {needsComment(vibeScore) && (
           <textarea
             placeholder="Why did you score Vibe this low/high?"
             value={vibeComment}
             onChange={(e) => setVibeComment(e.target.value)}
-            className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+            className={textareaClass}
           />
         )}
 
-        <ScoreSelector label="Facilities" value={facilities} setValue={setFacilities} />
-        {needsComment(facilities) && (
+        <p className="mb-3 text-base text-zinc-300">Facilities</p>
+        <input
+          type="text"
+          inputMode="decimal"
+          placeholder="Enter score"
+          value={facilities}
+          onChange={(e) => setFacilities(e.target.value)}
+          className={inputClass}
+        />
+        {isWholeNumber(facilities) && facilities.trim() !== "" && (
+          <p className="mb-3 text-sm text-zinc-500">rookie score</p>
+        )}
+        {needsComment(facilitiesScore) && (
           <textarea
             placeholder="Why did you score Facilities this low/high?"
             value={facilitiesComment}
             onChange={(e) => setFacilitiesComment(e.target.value)}
-            className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+            className={textareaClass}
           />
         )}
 
-        <ScoreSelector label="Value" value={value} setValue={setValue} />
-        {needsComment(value) && (
+        <p className="mb-3 text-base text-zinc-300">Value</p>
+        <input
+          type="text"
+          inputMode="decimal"
+          placeholder="Enter score"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className={inputClass}
+        />
+        {isWholeNumber(value) && value.trim() !== "" && (
+          <p className="mb-3 text-sm text-zinc-500">rookie score</p>
+        )}
+        {needsComment(valueScore) && (
           <textarea
             placeholder="Why did you score Value this low/high?"
             value={valueComment}
             onChange={(e) => setValueComment(e.target.value)}
-            className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+            className={textareaClass}
           />
         )}
 
@@ -318,7 +385,7 @@ export default function ReviewPage() {
           placeholder="General comment"
           value={generalComment}
           onChange={(e) => setGeneralComment(e.target.value)}
-          className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
+          className={textareaClass}
         />
 
         {error && (
@@ -330,7 +397,7 @@ export default function ReviewPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full rounded-2xl bg-white py-3 font-semibold text-black"
+          className="w-full rounded-2xl bg-white py-3 font-semibold text-black disabled:opacity-50"
         >
           {saving ? "Saving..." : "Submit Review"}
         </button>
