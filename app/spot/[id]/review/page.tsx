@@ -178,18 +178,39 @@ export default function ReviewPage() {
       return false;
     }
 
-    const perfectOrZeroSections: string[] = [];
+    const perfectSections: string[] = [];
+    const zeroSections: string[] = [];
 
-    if (saunaScore === 0 || saunaScore === 10) perfectOrZeroSections.push("Sauna");
-    if (coldPlungeScore === 0 || coldPlungeScore === 10) perfectOrZeroSections.push("Cold plunge");
-    if (facilitiesScore === 0 || facilitiesScore === 10) perfectOrZeroSections.push("Facilities");
-    if (vibeScore === 0 || vibeScore === 10) perfectOrZeroSections.push("Vibe");
-    if (valueScore === 0 || valueScore === 10) perfectOrZeroSections.push("Value");
+    if (saunaScore === 10) perfectSections.push("Sauna");
+    if (coldPlungeScore === 10) perfectSections.push("Cold plunge");
+    if (facilitiesScore === 10) perfectSections.push("Facilities");
+    if (vibeScore === 10) perfectSections.push("Vibe");
+    if (valueScore === 10) perfectSections.push("Value");
 
-    if (perfectOrZeroSections.length > 0) {
-      const confirmed = window.confirm(
-        `You’ve given ${perfectOrZeroSections.join(", ")} a 0 or 10.\n\nAre you sure the experience was truly so bad that nothing could be worse, or so good that nothing could possibly be better?`,
-      );
+    if (saunaScore === 0) zeroSections.push("Sauna");
+    if (coldPlungeScore === 0) zeroSections.push("Cold plunge");
+    if (facilitiesScore === 0) zeroSections.push("Facilities");
+    if (vibeScore === 0) zeroSections.push("Vibe");
+    if (valueScore === 0) zeroSections.push("Value");
+
+    if (perfectSections.length > 0 || zeroSections.length > 0) {
+      let message = "";
+
+      if (perfectSections.length > 0 && zeroSections.length === 0) {
+        message =
+          `You’ve given ${perfectSections.join(", ")} a perfect 10.\n\n` +
+          `Are you sure the experience was so amazing that there couldn’t possibly be anything better? Perfect scores are a scam, so this is your moment to rethink it.`;
+      } else if (zeroSections.length > 0 && perfectSections.length === 0) {
+        message =
+          `You’ve given ${zeroSections.join(", ")} a 0.\n\n` +
+          `Are you sure the experience was so shit that there couldn’t possibly be anything worse? Zero scores are a scam too, so this is your moment to rethink it.`;
+      } else {
+        message =
+          `You’ve given ${perfectSections.join(", ")} a 10 and ${zeroSections.join(", ")} a 0.\n\n` +
+          `Are you sure those sections were truly at the absolute extreme, with nothing possibly better or worse? Perfect scores and zeros are both a scam, so this is your moment to rethink them.`;
+      }
+
+      const confirmed = window.confirm(message);
 
       if (!confirmed) {
         return false;
