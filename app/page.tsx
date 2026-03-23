@@ -48,18 +48,17 @@ function getDistanceInKm(
   spotLat: number,
   spotLng: number,
 ) {
-  const toRad = (value: number) => (value * Math.PI) / 180;
+  const toRad = (v: number) => (v * Math.PI) / 180;
 
   const R = 6371;
   const dLat = toRad(spotLat - userLat);
   const dLng = toRad(spotLng - userLng);
 
   const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(userLat)) *
       Math.cos(toRad(spotLat)) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
+      Math.sin(dLng / 2) ** 2;
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
@@ -70,7 +69,6 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("highest-rated");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
-  const [locationDenied, setLocationDenied] = useState(false);
 
   useEffect(() => {
     const loadSpots = async () => {
@@ -104,52 +102,38 @@ export default function Home() {
     loadSpots();
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      (pos) =>
         setUserLocation({
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
-        });
-      },
-      () => setLocationDenied(true),
+        }),
+      () => {}
     );
   }, []);
 
   const getWeightedAvg = (reviews: Rating[], key: keyof Rating) => {
-    if (!reviews.length) return 0;
-
     let sum = 0;
-    let weightTotal = 0;
+    let weight = 0;
 
     for (const r of reviews) {
-      const weight = r.verified_reviewer ? 2 : 1;
-      const value = Number(r[key]);
-
-      if (!isNaN(value)) {
-        sum += value * weight;
-        weightTotal += weight;
-      }
+      const w = r.verified_reviewer ? 2 : 1;
+      sum += Number(r[key]) * w;
+      weight += w;
     }
 
-    if (weightTotal === 0) return 0;
-
-    return sum / weightTotal;
+    return weight ? sum / weight : 0;
   };
 
   const globalAverage = useMemo(() => {
     const all = spots.flatMap((s) => s.reviews);
-
-    if (!all.length) return 0;
-
     return getWeightedAvg(all, "overall");
   }, [spots]);
 
   const getRankingScore = (reviews: Rating[]) => {
-    if (!reviews.length) return 0;
-
     const R = getWeightedAvg(reviews, "overall");
     const v = reviews.reduce(
-      (sum, r) => sum + (r.verified_reviewer ? 2 : 1),
-      0,
+      (s, r) => s + (r.verified_reviewer ? 2 : 1),
+      0
     );
     const m = 2;
     const C = globalAverage;
@@ -158,24 +142,23 @@ export default function Home() {
   };
 
   const getDistance = (spot: Spot) => {
-    if (!userLocation || spot.lat === null || spot.lng === null) return null;
-
+    if (!userLocation || !spot.lat || !spot.lng) return null;
     return getDistanceInKm(
       userLocation.lat,
       userLocation.lng,
       spot.lat,
-      spot.lng,
+      spot.lng
     );
   };
 
-  const sorted = useMemo(() => {
+  const filtered = useMemo(() => {
     let list = [...spots];
 
     if (search) {
       list = list.filter(
         (s) =>
           s.name.toLowerCase().includes(search.toLowerCase()) ||
-          s.address.toLowerCase().includes(search.toLowerCase()),
+          s.address.toLowerCase().includes(search.toLowerCase())
       );
     }
 
@@ -202,15 +185,24 @@ export default function Home() {
       }
 
       if (sortBy === "sauna") {
-        return getWeightedAvg(b.reviews, "sauna") - getWeightedAvg(a.reviews, "sauna");
+        return (
+          getWeightedAvg(b.reviews, "sauna") -
+          getWeightedAvg(a.reviews, "sauna")
+        );
       }
 
       if (sortBy === "cold") {
-        return getWeightedAvg(b.reviews, "cold_plunge") - getWeightedAvg(a.reviews, "cold_plunge");
+        return (
+          getWeightedAvg(b.reviews, "cold_plunge") -
+          getWeightedAvg(a.reviews, "cold_plunge")
+        );
       }
 
       if (sortBy === "vibe") {
-        return getWeightedAvg(b.reviews, "vibe") - getWeightedAvg(a.reviews, "vibe");
+        return (
+          getWeightedAvg(b.reviews, "vibe") -
+          getWeightedAvg(a.reviews, "vibe")
+        );
       }
 
       return 0;
@@ -226,16 +218,17 @@ export default function Home() {
 
         <div className="mb-4 flex gap-3">
           <input
-            placeholder="Search"
+            type="text"
+            placeholder="Search name or address"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 rounded-2xl bg-zinc-900 p-3"
+            className="flex-1 rounded-2xl bg-zinc-900 p-3 text-white"
           />
 
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="rounded-2xl bg-zinc-900 p-3 text-sm"
+            className="w-44 rounded-2xl bg-zinc-900 p-3 text-sm text-zinc-300"
           >
             <option value="highest-rated">Top rated</option>
             <option value="most-reviewed">Most reviews</option>
@@ -248,28 +241,36 @@ export default function Home() {
         </div>
 
         <div className="space-y-4">
-          {sorted.map((spot) => {
+          {filtered.map((spot) => {
             const score = getRankingScore(spot.reviews);
             const distance = getDistance(spot);
 
             return (
-              <Link key={spot.id} href={`/spot/${spot.id}`}>
+              <Link key={spot.id} href={`/spot/${spot.id}`} className="block">
                 <div className="rounded-2xl bg-zinc-900 p-5">
                   <div className="flex justify-between">
-                    <h2>{spot.name}</h2>
+                    <h2 className="text-xl font-semibold">{spot.name}</h2>
                     <div>{score.toFixed(1)}</div>
                   </div>
 
                   <p className="text-sm text-zinc-400">{spot.address}</p>
 
-                  <div className="text-sm text-zinc-500">
-                    {distance && `${distance.toFixed(1)} km away`}
-                  </div>
+                  {distance !== null && (
+                    <p className="text-sm text-zinc-500">
+                      {distance.toFixed(1)} km away
+                    </p>
+                  )}
                 </div>
               </Link>
             );
           })}
         </div>
+
+        <Link href="/add" className="mt-8 block">
+          <div className="w-full rounded-2xl bg-white py-4 text-center text-xl font-semibold text-black">
+            + Add New Spot
+          </div>
+        </Link>
       </div>
     </main>
   );
