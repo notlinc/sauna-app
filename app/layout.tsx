@@ -14,7 +14,19 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Sauna Scorers",
-  description: "Find and review bathhouses",
+  description: "Find and review saunas",
+  openGraph: {
+    title: "Sauna Scorers",
+    description: "Find and review saunas",
+    url: "https://www.saunascorers.com",
+    siteName: "Sauna Scorers",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Sauna Scorers",
+    description: "Find and review saunas",
+  },
 };
 
 export default function RootLayout({
