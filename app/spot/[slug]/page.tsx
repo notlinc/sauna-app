@@ -21,6 +21,7 @@ type Review = {
 
 type Spot = {
   id: string;
+  slug: string | null;
   name: string;
   address: string;
   website: string | null;
@@ -39,7 +40,7 @@ function formatDate(value: string) {
 
 export default function SpotPage() {
   const params = useParams();
-  const id = params.id as string;
+  const spotPath = params.slug as string;
 
   const [spot, setSpot] = useState<Spot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +51,7 @@ export default function SpotPage() {
         .from("spots")
         .select(`
           id,
+          slug,
           name,
           address,
           website,
@@ -69,7 +71,7 @@ export default function SpotPage() {
             comment
           )
         `)
-        .eq("id", id)
+        .or(`slug.eq.${spotPath},id.eq.${spotPath}`)
         .single();
 
       if (error) {
@@ -91,7 +93,7 @@ export default function SpotPage() {
     };
 
     loadSpot();
-  }, [id]);
+  }, [spotPath]);
 
   const averages = useMemo(() => {
     if (!spot || spot.reviews.length === 0) return null;
@@ -145,6 +147,8 @@ export default function SpotPage() {
     );
   }
 
+  const publicSpotPath = spot.slug || spot.id;
+
   return (
     <main className="min-h-screen bg-black p-6 text-white">
       <div className="mx-auto max-w-md">
@@ -174,14 +178,14 @@ export default function SpotPage() {
 
         <div className="mt-4 flex gap-3">
           <Link
-            href={`/spot/${spot.id}/review`}
+            href={`/spot/${publicSpotPath}/review`}
             className="flex-1 rounded-xl bg-white py-3 text-center font-semibold text-black"
           >
             Add Review
           </Link>
 
           <Link
-            href={`/spot/${spot.id}/edit`}
+            href={`/spot/${publicSpotPath}/edit`}
             className="flex-1 rounded-xl bg-zinc-800 py-3 text-center text-sm text-white"
           >
             Edit

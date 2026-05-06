@@ -5,6 +5,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../src/lib/supabase";
 
+function generateSlug(name: string) {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export default function AddSpot() {
   const router = useRouter();
 
@@ -25,11 +33,16 @@ export default function AddSpot() {
 
     const now = new Date().toISOString();
 
+    const slug = generateSlug(name);
+
+    const id = crypto.randomUUID();
+
     const { error } = await supabase.from("spots").insert({
-      id: crypto.randomUUID(),
+      id,
+      slug,
       name: name.trim(),
       address: address.trim(),
-      website: website.trim(),
+      website: website.trim() || null,
       created_at: now,
       updated_at: now,
     });
@@ -41,7 +54,7 @@ export default function AddSpot() {
       return;
     }
 
-    router.push("/");
+    router.push(`/spot/${slug}`);
     router.refresh();
   };
 

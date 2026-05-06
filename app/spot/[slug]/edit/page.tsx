@@ -5,10 +5,21 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../../../../src/lib/supabase";
 
+function generateSlug(name: string) {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export default function EditPage() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const router = useRouter();
-  const spotId = id as string;
+  const spotPath = slug as string;
+
+  const [spotId, setSpotId] = useState<string | null>(null);
+  const [currentSlug, setCurrentSlug] = useState("");
 
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
@@ -20,13 +31,21 @@ export default function EditPage() {
 
   useEffect(() => {
     const loadSpot = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("spots")
-        .select("name, address, website")
-        .eq("id", spotId)
+        .select("id, slug, name, address, website")
+        .or(`slug.eq.${spotPath},id.eq.${spotPath}`)
         .single();
 
+      if (error) {
+        setError("Spot not found");
+        setLoading(false);
+        return;
+      }
+
       if (data) {
+        setSpotId(data.id);
+        setCurrentSlug(data.slug || "");
         setName(data.name);
         setAddress(data.address);
         setWebsite(data.website || "");
@@ -36,7 +55,7 @@ export default function EditPage() {
     };
 
     loadSpot();
-  }, [spotId]);
+  }, [spotPath]);
 
   const handleSave = async () => {
     if (!verified) {
@@ -44,15 +63,23 @@ export default function EditPage() {
       return;
     }
 
+    if (!spotId) {
+      setError("Spot not found");
+      return;
+    }
+
     setSaving(true);
     setError("");
+
+    const nextSlug = currentSlug || generateSlug(name);
 
     const { error } = await supabase
       .from("spots")
       .update({
         name,
         address,
-        website,
+        website: website.trim() || null,
+        slug: nextSlug,
         updated_at: new Date().toISOString(),
       })
       .eq("id", spotId);
@@ -64,7 +91,7 @@ export default function EditPage() {
       return;
     }
 
-    router.push(`/spot/${spotId}`);
+    router.push(`/spot/${nextSlug}`);
     router.refresh();
   };
 
@@ -73,7 +100,10 @@ export default function EditPage() {
   return (
     <main className="min-h-screen bg-black p-6 text-white">
       <div className="mx-auto max-w-md">
-        <Link href={`/spot/${spotId}`} className="mb-4 block text-sm text-zinc-400 underline">
+        <Link
+          href={`/spot/${currentSlug || spotPath}`}
+          className="mb-4 block text-sm text-zinc-400 underline"
+        >
           Back
         </Link>
 
@@ -107,15 +137,14 @@ export default function EditPage() {
           Verified reviewer
         </label>
 
-        {error && (
-          <div className="mb-4 text-red-400">{error}</div>
-        )}
+        {error && <div className="mb-4 text-red-400">{error}</div>}
 
         <button
           onClick={handleSave}
-          className="w-full rounded-2xl bg-white py-3 text-black"
+          disabled={saving}
+          className="w-full rounded-2xl bg-white py-3 text-black disabled:opacity-50"
         >
-          Save
+          {saving ? "Saving..." : "Save"}
         </button>
       </div>
     </main>

@@ -19,6 +19,7 @@ type Rating = {
 
 type Spot = {
   id: string;
+  slug: string | null;
   name: string;
   address: string;
   lat: number | null;
@@ -78,6 +79,7 @@ export default function Home() {
         .from("spots")
         .select(`
           id,
+          slug,
           name,
           address,
           lat,
@@ -214,11 +216,7 @@ export default function Home() {
   };
 
   const getDistance = (spot: Spot) => {
-    if (
-      !userLocation ||
-      spot.lat === null ||
-      spot.lng === null
-    ) {
+    if (!userLocation || spot.lat === null || spot.lng === null) {
       return null;
     }
 
@@ -372,9 +370,10 @@ export default function Home() {
                       : getRankingScore(spot.reviews);
 
               const distance = getDistance(spot);
+              const spotPath = spot.slug || spot.id;
 
               return (
-                <Link key={spot.id} href={`/spot/${spot.id}`} className="block">
+                <Link key={spot.id} href={`/spot/${spotPath}`} className="block">
                   <div className="rounded-2xl bg-zinc-900 p-5">
                     <div className="mb-3 flex items-center justify-between gap-4">
                       <h2 className="text-2xl font-semibold leading-tight">

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../../src/lib/supabase";
 
@@ -59,9 +59,11 @@ function calculateOverall(scores: {
 }
 
 export default function ReviewPage() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const router = useRouter();
-  const spotId = id as string;
+
+  const spotSlug = slug as string;
+  const [spotId, setSpotId] = useState<string | null>(null);
 
   const [reviewerName, setReviewerName] = useState("");
   const [verifiedReviewer, setVerifiedReviewer] = useState(false);
@@ -83,6 +85,25 @@ export default function ReviewPage() {
   const [generalComment, setGeneralComment] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const loadSpot = async () => {
+      const { data, error } = await supabase
+        .from("spots")
+        .select("id")
+        .or(`slug.eq.${spotSlug},id.eq.${spotSlug}`)
+        .single();
+
+      if (error) {
+        setError("Spot not found");
+        return;
+      }
+
+      setSpotId(data.id);
+    };
+
+    loadSpot();
+  }, [spotSlug]);
 
   const saunaScore = parseScore(sauna);
   const coldPlungeScore = parseScore(coldPlunge);
@@ -140,6 +161,11 @@ export default function ReviewPage() {
   const validate = () => {
     if (!reviewerName.trim()) {
       setError("Reviewer name is required");
+      return false;
+    }
+
+    if (!spotId) {
+      setError("Spot not found");
       return false;
     }
 
@@ -225,6 +251,7 @@ export default function ReviewPage() {
 
   const handleSave = async () => {
     if (!validate()) return;
+    if (!spotId) return;
 
     setSaving(true);
     setError("");
@@ -255,7 +282,7 @@ export default function ReviewPage() {
       .update({ updated_at: new Date().toISOString() })
       .eq("id", spotId);
 
-    router.push(`/spot/${spotId}`);
+    router.push(`/spot/${spotSlug}`);
     router.refresh();
   };
 
@@ -268,7 +295,7 @@ export default function ReviewPage() {
     <main className="min-h-screen bg-black p-6 text-white">
       <div className="mx-auto max-w-md">
         <Link
-          href={`/spot/${spotId}`}
+          href={`/spot/${spotSlug}`}
           className="mb-4 block text-sm text-zinc-400 underline"
         >
           Back
