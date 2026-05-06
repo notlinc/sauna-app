@@ -65,6 +65,8 @@ export default function ReviewPage() {
 
   const [reviewerName, setReviewerName] = useState("");
   const [verifiedReviewer, setVerifiedReviewer] = useState(false);
+  const [verificationPassword, setVerificationPassword] = useState("");
+  const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
 
   const [sauna, setSauna] = useState("");
   const [coldPlunge, setColdPlunge] = useState("");
@@ -281,14 +283,72 @@ export default function ReviewPage() {
           className={inputClass}
         />
 
-        <label className="mb-6 flex gap-2 text-sm text-zinc-300">
-          <input
-            type="checkbox"
-            checked={verifiedReviewer}
-            onChange={(e) => setVerifiedReviewer(e.target.checked)}
-          />
-          Verified reviewer
-        </label>
+        <div className="mb-6">
+          <label className="mb-3 flex gap-2 text-sm text-zinc-300">
+            <input
+              type="checkbox"
+              checked={verifiedReviewer}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setShowVerificationPrompt(true);
+                } else {
+                  setVerifiedReviewer(false);
+                  setVerificationPassword("");
+                  setShowVerificationPrompt(false);
+                }
+              }}
+            />
+            Verified reviewer
+          </label>
+
+          {showVerificationPrompt && (
+            <div className="rounded-2xl bg-zinc-900 p-4">
+              <p className="mb-3 text-sm text-zinc-400">
+                Enter verification password
+              </p>
+
+              <input
+                type="password"
+                placeholder="Password"
+                value={verificationPassword}
+                onChange={(e) => setVerificationPassword(e.target.value)}
+                className="mb-3 w-full rounded-2xl bg-black p-3 text-white placeholder:text-zinc-500"
+              />
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (
+                      verificationPassword.trim().toLowerCase() ===
+                      "suckatorium"
+                    ) {
+                      setVerifiedReviewer(true);
+                      setShowVerificationPrompt(false);
+                    } else {
+                      alert("Incorrect verification password");
+                    }
+                  }}
+                  className="flex-1 rounded-2xl bg-white py-2 font-semibold text-black"
+                >
+                  Verify
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVerifiedReviewer(false);
+                    setVerificationPassword("");
+                    setShowVerificationPrompt(false);
+                  }}
+                  className="flex-1 rounded-2xl bg-zinc-800 py-2 text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="mb-6 rounded-2xl bg-zinc-900 p-4">
           <p className="mb-1 text-sm text-zinc-400">Calculated overall</p>
