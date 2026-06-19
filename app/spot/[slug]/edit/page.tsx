@@ -24,6 +24,7 @@ export default function EditPage() {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [website, setWebsite] = useState("");
+  const [hasColdPlunge, setHasColdPlunge] = useState(true);
   const [verified, setVerified] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,7 +34,7 @@ export default function EditPage() {
     const loadSpot = async () => {
       const { data, error } = await supabase
         .from("spots")
-        .select("id, slug, name, address, website")
+        .select("id, slug, name, address, website, has_cold_plunge")
         .or(`slug.eq.${spotPath},id.eq.${spotPath}`)
         .single();
 
@@ -43,14 +44,12 @@ export default function EditPage() {
         return;
       }
 
-      if (data) {
-        setSpotId(data.id);
-        setCurrentSlug(data.slug || "");
-        setName(data.name);
-        setAddress(data.address);
-        setWebsite(data.website || "");
-      }
-
+      setSpotId(data.id);
+      setCurrentSlug(data.slug || "");
+      setName(data.name);
+      setAddress(data.address);
+      setWebsite(data.website || "");
+      setHasColdPlunge(data.has_cold_plunge ?? true);
       setLoading(false);
     };
 
@@ -76,10 +75,11 @@ export default function EditPage() {
     const { error } = await supabase
       .from("spots")
       .update({
-        name,
-        address,
+        name: name.trim(),
+        address: address.trim(),
         website: website.trim() || null,
         slug: nextSlug,
+        has_cold_plunge: hasColdPlunge,
         updated_at: new Date().toISOString(),
       })
       .eq("id", spotId);
@@ -112,12 +112,14 @@ export default function EditPage() {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
+          placeholder="Spot name"
           className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
         />
 
         <input
           value={address}
           onChange={(e) => setAddress(e.target.value)}
+          placeholder="Full address"
           className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
         />
 
@@ -128,7 +130,25 @@ export default function EditPage() {
           className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
         />
 
-        <label className="mb-4 flex gap-2 text-sm">
+        <div className="mb-4 rounded-2xl bg-zinc-900 p-4">
+          <label className="flex gap-2 text-sm text-zinc-300">
+            <input
+              type="checkbox"
+              checked={hasColdPlunge}
+              onChange={(e) => setHasColdPlunge(e.target.checked)}
+            />
+            This location has a cold plunge
+          </label>
+
+          {!hasColdPlunge && (
+            <p className="mt-3 text-sm text-zinc-500">
+              Cold: This location does not offer a cold plunge. A fixed score
+              will be applied to reviews.
+            </p>
+          )}
+        </div>
+
+        <label className="mb-4 flex gap-2 text-sm text-zinc-300">
           <input
             type="checkbox"
             checked={verified}
