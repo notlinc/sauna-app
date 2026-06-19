@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../../src/lib/supabase";
 
+const NO_COLD_PLUNGE_SCORE = 3.0;
+
 function parseScore(value: string): number | null {
   const trimmed = value.trim();
   if (trimmed === "") return null;
@@ -64,6 +66,7 @@ export default function ReviewPage() {
 
   const spotSlug = slug as string;
   const [spotId, setSpotId] = useState<string | null>(null);
+  const [hasColdPlunge, setHasColdPlunge] = useState(true);
 
   const [reviewerName, setReviewerName] = useState("");
   const [verifiedReviewer, setVerifiedReviewer] = useState(false);
@@ -90,7 +93,7 @@ export default function ReviewPage() {
     const loadSpot = async () => {
       const { data, error } = await supabase
         .from("spots")
-        .select("id")
+        .select("id, has_cold_plunge")
         .or(`slug.eq.${spotSlug},id.eq.${spotSlug}`)
         .single();
 
@@ -100,6 +103,7 @@ export default function ReviewPage() {
       }
 
       setSpotId(data.id);
+      setHasColdPlunge(data.has_cold_plunge ?? true);
     };
 
     loadSpot();
@@ -107,6 +111,9 @@ export default function ReviewPage() {
 
   const saunaScore = parseScore(sauna);
   const coldPlungeScore = parseScore(coldPlunge);
+  const effectiveColdPlungeScore = hasColdPlunge
+    ? coldPlungeScore
+    : NO_COLD_PLUNGE_SCORE;
   const facilitiesScore = parseScore(facilities);
   const vibeScore = parseScore(vibe);
   const valueScore = parseScore(value);
@@ -115,30 +122,53 @@ export default function ReviewPage() {
     () =>
       calculateOverall({
         sauna: saunaScore,
-        coldPlunge: coldPlungeScore,
+        coldPlunge: effectiveColdPlungeScore,
         facilities: facilitiesScore,
         vibe: vibeScore,
         value: valueScore,
       }),
-    [saunaScore, coldPlungeScore, facilitiesScore, vibeScore, valueScore],
+    [
+      saunaScore,
+      effectiveColdPlungeScore,
+      facilitiesScore,
+      vibeScore,
+      valueScore,
+    ],
   );
 
   const compiledComment = useMemo(() => {
     const lines: string[] = [];
 
     if (generalComment.trim()) lines.push(generalComment.trim());
+
     if (needsComment(saunaScore) && saunaComment.trim()) {
       lines.push(`Sauna: ${saunaComment.trim()}`);
     }
-    if (needsComment(coldPlungeScore) && coldPlungeComment.trim()) {
+
+    if (
+      hasColdPlunge &&
+      needsComment(coldPlungeScore) &&
+      coldPlungeComment.trim()
+    ) {
       lines.push(`Cold plunge: ${coldPlungeComment.trim()}`);
     }
+
+    if (!hasColdPlunge) {
+      lines.push(
+        `Cold: This location does not offer a cold plunge. Fixed score of ${NO_COLD_PLUNGE_SCORE.toFixed(
+          1,
+        )} applied.`,
+      );
+    }
+
     if (needsComment(facilitiesScore) && facilitiesComment.trim()) {
       lines.push(`Facilities: ${facilitiesComment.trim()}`);
     }
+
     if (needsComment(vibeScore) && vibeComment.trim()) {
       lines.push(`Vibe: ${vibeComment.trim()}`);
     }
+
     if (needsComment(valueScore) && valueComment.trim()) {
       lines.push(`Value: ${valueComment.trim()}`);
     }
@@ -156,6 +186,7 @@ export default function ReviewPage() {
     vibeComment,
     valueComment,
     generalComment,
+    hasColdPlunge,
   ]);
 
   const validate = () => {
@@ -171,7 +202,7 @@ export default function ReviewPage() {
 
     if (
       saunaScore === null ||
-      coldPlungeScore === null ||
+      effectiveColdPlungeScore === null ||
       facilitiesScore === null ||
       vibeScore === null ||
       valueScore === null
@@ -184,18 +215,26 @@ export default function ReviewPage() {
       setError("Sauna needs a comment");
       return false;
     }
-    if (needsComment(coldPlungeScore) && !coldPlungeComment.trim()) {
+
+    if (
+      hasColdPlunge &&
+      needsComment(coldPlungeScore) &&
+      !coldPlungeComment.trim()
+    ) {
       setError("Cold plunge needs a comment");
       return false;
     }
+
     if (needsComment(facilitiesScore) && !facilitiesComment.trim()) {
       setError("Facilities needs a comment");
       return false;
     }
+
     if (needsComment(vibeScore) && !vibeComment.trim()) {
       setError("Vibe needs a comment");
       return false;
     }
+
     if (needsComment(valueScore) && !valueComment.trim()) {
       setError("Value needs a comment");
       return false;
@@ -210,13 +249,17 @@ export default function ReviewPage() {
     const zeroSections: string[] = [];
 
     if (saunaScore === 10) perfectSections.push("Sauna");
-    if (coldPlungeScore === 10) perfectSections.push("Cold plunge");
+    if (hasColdPlunge && coldPlungeScore === 10) {
+      perfectSections.push("Cold plunge");
+    }
     if (facilitiesScore === 10) perfectSections.push("Facilities");
     if (vibeScore === 10) perfectSections.push("Vibe");
     if (valueScore === 10) perfectSections.push("Value");
 
     if (saunaScore === 0) zeroSections.push("Sauna");
-    if (coldPlungeScore === 0) zeroSections.push("Cold plunge");
+    if (hasColdPlunge && coldPlungeScore === 0) {
+      zeroSections.push("Cold plunge");
+    }
     if (facilitiesScore === 0) zeroSections.push("Facilities");
     if (vibeScore === 0) zeroSections.push("Vibe");
     if (valueScore === 0) zeroSections.push("Value");
@@ -263,7 +306,7 @@ export default function ReviewPage() {
       created_at: new Date().toISOString(),
       overall,
       sauna: saunaScore,
-      cold_plunge: coldPlungeScore,
+      cold_plunge: effectiveColdPlungeScore,
       facilities: facilitiesScore,
       vibe: vibeScore,
       value: valueScore,
@@ -405,25 +448,34 @@ export default function ReviewPage() {
           />
         )}
 
-        <p className="mb-3 text-base text-zinc-300">Cold plunge</p>
-        <input
-          type="text"
-          inputMode="decimal"
-          placeholder="Enter score"
-          value={coldPlunge}
-          onChange={(e) => setColdPlunge(e.target.value)}
-          className={inputClass}
-        />
-        {isWholeNumber(coldPlunge) && coldPlunge.trim() !== "" && (
-          <p className="mb-3 text-sm text-zinc-500">rookie score</p>
-        )}
-        {needsComment(coldPlungeScore) && (
-          <textarea
-            placeholder="Why did you score Cold plunge this low/high?"
-            value={coldPlungeComment}
-            onChange={(e) => setColdPlungeComment(e.target.value)}
-            className={textareaClass}
-          />
+        {hasColdPlunge ? (
+          <>
+            <p className="mb-3 text-base text-zinc-300">Cold plunge</p>
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="Enter score"
+              value={coldPlunge}
+              onChange={(e) => setColdPlunge(e.target.value)}
+              className={inputClass}
+            />
+            {isWholeNumber(coldPlunge) && coldPlunge.trim() !== "" && (
+              <p className="mb-3 text-sm text-zinc-500">rookie score</p>
+            )}
+            {needsComment(coldPlungeScore) && (
+              <textarea
+                placeholder="Why did you score Cold plunge this low/high?"
+                value={coldPlungeComment}
+                onChange={(e) => setColdPlungeComment(e.target.value)}
+                className={textareaClass}
+              />
+            )}
+          </>
+        ) : (
+          <div className="mb-6 rounded-2xl bg-zinc-900 p-4 text-sm text-zinc-400">
+            Cold: This location does not offer a cold plunge. A fixed score of{" "}
+            {NO_COLD_PLUNGE_SCORE.toFixed(1)} is applied.
+          </div>
         )}
 
         <p className="mb-3 text-base text-zinc-300">Vibe</p>

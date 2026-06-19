@@ -19,6 +19,7 @@ export default function AddSpot() {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [website, setWebsite] = useState("");
+  const [hasColdPlunge, setHasColdPlunge] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -32,9 +33,7 @@ export default function AddSpot() {
     setError("");
 
     const now = new Date().toISOString();
-
     const slug = generateSlug(name);
-
     const id = crypto.randomUUID();
 
     const { error } = await supabase.from("spots").insert({
@@ -43,6 +42,7 @@ export default function AddSpot() {
       name: name.trim(),
       address: address.trim(),
       website: website.trim() || null,
+      has_cold_plunge: hasColdPlunge,
       created_at: now,
       updated_at: now,
     });
@@ -90,6 +90,15 @@ export default function AddSpot() {
           onChange={(e) => setWebsite(e.target.value)}
           className="mb-4 w-full rounded-2xl bg-zinc-900 p-3"
         />
+
+        <label className="mb-4 flex gap-2 text-sm text-zinc-300">
+          <input
+            type="checkbox"
+            checked={hasColdPlunge}
+            onChange={(e) => setHasColdPlunge(e.target.checked)}
+          />
+          Has cold plunge
+        </label>
 
         {error && (
           <div className="mb-4 rounded-2xl bg-red-950 p-3 text-sm text-red-200">
